@@ -1,9 +1,12 @@
 function [myAppearance, Feat, Feat_rec] = appe_model()             % features is already normalized
 
     load shape_model;
-    folder1 = './train_data/helen/trainset/';
+    datasetDir = '../dataset/'; 
+    testsetDir = '../test_data/'; 
+    CLMDir = './';
+    folder1 = [datasetDir 'helen/trainset/'];
     what1 = 'jpg';
-    folder2 = './train_data/lfpw/trainset/';
+    folder2 = [datasetDir 'lfpw/trainset/'];
     what2 = 'png';
     names1 = dir([folder1 '*.' what1]);
     names2 = dir([folder1 '*.pts']);

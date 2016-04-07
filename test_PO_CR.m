@@ -68,7 +68,7 @@ for gg = 1:length(names1)
     %% compute pt-pt error
     pt_pt_err1 = zeros(length(gt_s), 1);
     for ii = 1:length(gt_s)
-        pt_pt_err1(ii) =  norm(gt_s(ii,:) - fitted_shape(ii,:));
+        pt_pt_err1(ii) =  norm(gt_s(ii,:) - fitted_shape(ii,:));                    % abs
     end
     pt_pt_err(gg) = mean(pt_pt_err1)/face_size;    
 end
