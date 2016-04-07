@@ -2,7 +2,7 @@ This is the reimplementation of PO_CR.
 
 Run regressor_sep.m to train a project-out cascaded regressor by training datasets.
 
-Before running regressor_sep.m, please run following scripts to get some .mat files prepared. 
+Before running regressor_sep.m, please run following scripts to generate some .mat files. 
 
 run shape_model.m to get myShape.mat
 
