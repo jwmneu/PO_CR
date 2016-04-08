@@ -76,7 +76,7 @@ for SIFT_scale = 10:30
 		A0P = myAppearance.A0' * P;  
 		shapemodelS0 = shapemodel.s0; 
 		Risk = load([inputDir  'Risks/Risk_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat']);
-		
+		Risk = Risk.Risk;
 		%% parallel task - initialize perturbed shape parameters of image(gg), compute feature matrix
 		disp( 'extracting features on Helen and LFPW train dataset and update shape parameter based on pretrained Jacobian and Risk');
 		parfor gg = 1 : n1
