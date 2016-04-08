@@ -63,7 +63,6 @@ for SIFT_scale = 10:30
 		pp(1, gg, :) = p_mat(gg, 1, :);
 	end
 	save([outputDir 'ppp/ppp_initial_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pp');
-	
 	p_mat2 = p_mat(n1+1:n1+n2, :, :);
 	feat2 = zeros(n2, Kpi, N);
 	b_mat2 = zeros(n2, Kpi, N);
@@ -77,7 +76,7 @@ for SIFT_scale = 10:30
 		shapemodelS0 = shapemodel.s0; 
 		
 		%% parallel task - initialize perturbed shape parameters of image(gg), compute feature matrix
-		disp( 'extracting features on Helen and LFPW train dataset');
+		disp( 'extracting features from Helen train dataset');
 		parfor gg = 1 : n1
 			p_mat_gg = p_mat(gg, :, :);		
 			pts = read_shape([folder1 names2(gg).name], num_of_pts);                         % read ground truth landmarks
@@ -100,7 +99,7 @@ for SIFT_scale = 10:30
 			end
 			p_mat(gg, :, :) = p_mat_gg;
 		end   
-		disp('extracting features from LFPW dataset');
+		disp('extracting features from LFPW train dataset');
 					       % stores pt-pt error for each image
 		parfor gg = 1:n2
 			p_mat_gg = p_mat2(gg, :, :);		
@@ -123,7 +122,7 @@ for SIFT_scale = 10:30
 				feat2(gg, k, :) = reshape(Sfeat, 1, []); 
 				b_mat2(gg, k, :) =  reshape(feat2(gg, k, :), 1, []) - A0P;
 			end
-			p_mat2(gg, :, :) = p_mat_gg;
+			p_mat2(gg, :, :) = p_mat_gg; 
 		end                       
 		p_mat(n1+1:n1+n2, :, :) = p_mat2;
 		b_mat(n1+1:n1+n2, :, :) = b_mat2;
@@ -147,7 +146,7 @@ for SIFT_scale = 10:30
 		end
 
 		%% parallel task - update shape parameter p and compute pt-pt error
-		disp('updating shape parameters and computing pt-pt error');
+		disp('updating shape parameters for Helen train set and computing pt-pt error');
 		Hessian = Jp' * Jp; 
 		Risk = Hessian \ Jp'; 
 		parfor gg = 1:n1
@@ -174,7 +173,7 @@ for SIFT_scale = 10:30
 			end
 			pt_pt_err(t, gg) = sum(pt_pt_err1) / Kpi;
 		end 
-		disp('updating shape parameters for LFPW dataset');
+		disp('updating shape parameters for LFPW train set and computing pt-pt error');
 		parfor gg = 1:n2
 			% update p_mat
 			p_mat_gg = p_mat2(gg, :, :);
@@ -223,11 +222,9 @@ for SIFT_scale = 10:30
 	end 
 
 	%% save result
-	disp( 'finish all iterations. saving results')
+	disp( 'finish all iterations in training. saving results')
 	save([outputDir 'Jp.mat'], 'Jp');
 	save([outputDir 'cum_err_full.mat'], 'cum_err_full');
-	a = [1 2 3];
-	save('test_matlab_working_v1.mat', 'a');
 
 	%% plot cumulative error curve
 	% figure; hold on;

@@ -78,7 +78,7 @@ for SIFT_scale = 10:30
 		Risk = load([inputDir  'Risks/Risk_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat']);
 		Risk = Risk.Risk;
 		%% parallel task - initialize perturbed shape parameters of image(gg), compute feature matrix
-		disp( 'extracting features on Helen and LFPW train dataset and update shape parameter based on pretrained Jacobian and Risk');
+		disp( 'extracting features on Helen test dataset and update shape parameter based on pretrained Jacobian and Risk');
 		parfor gg = 1 : n1
 			p_mat_gg = p_mat(gg, :, :);		
 			pts = read_shape([folder1 names2(gg).name], num_of_pts);                         % read ground truth landmarks
@@ -117,7 +117,7 @@ for SIFT_scale = 10:30
 			pt_pt_err(t, gg) = sum(pt_pt_err1) / Kpi;
 			
 		end   
-		disp('extracting features from LFPW dataset and update shape parameter based on pretrained Jacobian and Risk');
+		disp('extracting features from LFPW test dataset and update shape parameter based on pretrained Jacobian and Risk');
 		parfor gg = 1:n2
 			p_mat_gg = p_mat2(gg, :, :);		
 			gg
