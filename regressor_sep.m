@@ -36,6 +36,7 @@ for SIFT_scale = 10:30
 	N = size(myAppearance.A, 1);				% number of SIFT features
 	m = size(myAppearance.A, 2);                            % number of eigenvectors of myAppearance.A
 	K = size(myShape.p, 2);                                      % number of eigenvectors of myShape.Q
+	var = 0:0.02:0.9;
 	n1 = length(names1);					     % 2000
 	n2 = length(names3);					     % 811
 	n = n1 + n2; 
@@ -45,17 +46,12 @@ for SIFT_scale = 10:30
 		n = n1 + n2;
 	end
 	
-	%% cascaded regression for only Helen dataset
+	%% cascaded regression for only Helen and LFPW dataset
 	p_mat = zeros(n, Kpi, K);
 	delta_p_mat = zeros(n, Kpi, K);
 	feat = zeros(n, Kpi, N);
 	b_mat = zeros(n, Kpi, N);
-	% scale = 100; 
-	% non_rigid_std = fd_stat.std(1, 1:4) * scale;
-	% non_rigid_std(1, 3) = non_rigid_std(1, 3) * scale;                                          % ???
 	pt_pt_err = zeros(n, 1);				       % stores pt-pt error for each image
-	var = 0:0.02:0.9;
-
 	% initialize p_mat
 	myShape_p = myShape.p;
 	myShape_p(:, 4) = 0;	
@@ -67,6 +63,11 @@ for SIFT_scale = 10:30
 		pp(1, gg, :) = p_mat(gg, 1, :);
 	end
 	save([outputDir 'ppp/ppp_initial_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pp');
+	
+	p_mat2 = p_mat(n1+1:n1+n2, :, :);
+	feat2 = zeros(n2, Kpi, N);
+	b_mat2 = zeros(n2, Kpi, N);
+	pt_pt_err2 = zeros(n2, 1);	
 		
 	for t = 1 : T
 		disp(['iteration is ' num2str(t)]);
@@ -100,10 +101,12 @@ for SIFT_scale = 10:30
 			p_mat(gg, :, :) = p_mat_gg;
 		end   
 		disp('extracting features from LFPW dataset');
-		parfor gg = n1 + 1 : n1+ n2, ind = 1:n2
-			p_mat_gg = p_mat(gg, :, :);		
-			pts = read_shape([folder2 names4(ind).name], num_of_pts);  
-			input_image = imread([folder2 names3(ind).name]); 	
+					       % stores pt-pt error for each image
+		parfor gg = 1:n2
+			p_mat_gg = p_mat2(gg, :, :);		
+			gg
+			pts = read_shape([folder2 names4(gg).name], num_of_pts);  
+			input_image = imread([folder2 names3(gg).name]); 	
 			gt_landmark = (pts-1);
 			gt_landmark = reshape(gt_landmark, 68, 2);
 
@@ -117,11 +120,13 @@ for SIFT_scale = 10:30
 				lm = reshape(lm, 68, 2) * (1/scl);
 				lm = lm * p_mat_gg(1, k, 1);				% scale
 				Sfeat = SIFT_features(input_image, lm, SIFT_scale);
-				feat(gg, k, :) = reshape(Sfeat, 1, []); 
-				b_mat(gg, k, :) =  reshape(feat(gg, k, :), 1, []) - A0P;
+				feat2(gg, k, :) = reshape(Sfeat, 1, []); 
+				b_mat2(gg, k, :) =  reshape(feat2(gg, k, :), 1, []) - A0P;
 			end
-			p_mat(gg, :, :) = p_mat_gg;
+			p_mat2(gg, :, :) = p_mat_gg;
 		end                       
+		p_mat(n1+1:n1+n2, :, :) = p_mat2;
+		b_mat(n1+1:n1+n2, :, :) = b_mat2;
 		
 		%% centralized task 
 		disp( 'duplicating matrices and doing ridge regresstion');
@@ -145,7 +150,7 @@ for SIFT_scale = 10:30
 		disp('updating shape parameters and computing pt-pt error');
 		Hessian = Jp' * Jp; 
 		Risk = Hessian \ Jp'; 
-		parfor gg = 1 : n1
+		parfor gg = 1:n1
 			% update p_mat
 			p_mat_gg = p_mat(gg, :, :);
 			for k = 1 : Kpi
@@ -170,17 +175,17 @@ for SIFT_scale = 10:30
 			pt_pt_err(t, gg) = sum(pt_pt_err1) / Kpi;
 		end 
 		disp('updating shape parameters for LFPW dataset');
-		parfor gg = n1 + 1 : n1 + n2, ind = 1:n2
+		parfor gg = 1:n2
 			% update p_mat
-			p_mat_gg = p_mat(gg, :, :);
+			p_mat_gg = p_mat2(gg, :, :);
 			for k = 1 : Kpi
-				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat(gg, k, :)), 1, N)')';
+				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat2(gg, k, :)), 1, N)')';
 			end
 			ppp(t, gg, :) = (p_mat_gg(1, 1, :));
-			p_mat(gg, :, :) = p_mat_gg; 
+			p_mat2(gg, :, :) = p_mat_gg; 
 
 			% compute pt-pt error
-			pts = read_shape([folder2 names4(ind).name], num_of_pts);
+			pts = read_shape([folder2 names4(gg).name], num_of_pts);
 			gt_landmark = (pts-1);
 			gt_landmark = reshape(gt_landmark, 68, 2);
 			[~,~,Tt] = procrustes(shapemodelS0, gt_landmark);        
@@ -192,8 +197,12 @@ for SIFT_scale = 10:30
 				fitted_shape = myShapeS0 + myShapeQ * reshape(p_mat_gg(1, k, :), [], 1);
 				pt_pt_err1(1, k) = mean(abs(fitted_shape - reshape(gt_landmark, [], 1))) / face_size;
 			end
-			pt_pt_err(t, gg) = sum(pt_pt_err1) / Kpi;
+			pt_pt_err2(t, gg) = sum(pt_pt_err1) / Kpi;
 		end 
+		p_mat(n1+1:n1+n2, :, :) = p_mat2;
+		b_mat(n1+1:n1+n2, :, :) = b_mat2;
+		pt_pt_err(t, n1+1:n1+n2) = pt_pt_err2; 
+		
 		pt_pt_err_all(t) = sum(pt_pt_err(t, :)) / n;
 		
 		%% cumulative curve
