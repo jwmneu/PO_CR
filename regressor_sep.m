@@ -5,7 +5,8 @@ T = 3;
 ridge_param = 0;
 learning_rate = 0.5;
 smallsize = 0;
-SIFT_scale = 15;
+
+for SIFT_scale = 10:30
 	%% initialization
 	cd 'vlfeat-0.9.20/toolbox'
 	vl_setup
@@ -265,6 +266,6 @@ SIFT_scale = 15;
 	% end
 	% 
 	
-%end
+end
 
 
