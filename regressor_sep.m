@@ -1,7 +1,7 @@
 %function [] = regressor_sep(SIFT_scale, Kpi, T, ridge_param, learning_rate, smallsize)
 clear;
 Kpi = 10;
-T = 3;
+T = 1;
 ridge_param = 0;
 learning_rate = 0.5;
 smallsize = 0;
@@ -41,8 +41,8 @@ for SIFT_scale = 10:30
 	n2 = length(names3);					     % 811
 	n = n1 + n2; 
 	if smallsize == 1
-		n1 = 20;
-		n2 = 20;
+		n1 = 15;
+		n2 = 15;
 		n = n1 + n2;
 	end
 	
@@ -51,7 +51,7 @@ for SIFT_scale = 10:30
 	delta_p_mat = zeros(n, Kpi, K);
 	feat = zeros(n, Kpi, N);
 	b_mat = zeros(n, Kpi, N);
-	pt_pt_err = zeros(n, 1);				       % stores pt-pt error for each image
+	pt_pt_err = zeros(T, n);				       % stores pt-pt error for each image
 	% initialize p_mat
 	myShape_p = myShape.p;
 	myShape_p(:, 4) = 0;	
@@ -62,11 +62,11 @@ for SIFT_scale = 10:30
 		end
 		pp(1, gg, :) = p_mat(gg, 1, :);
 	end
-	save([outputDir 'ppp/ppp_initial_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pp');
+	save([outputDir 'ppp/ppp_initial_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'pp');
 	p_mat2 = p_mat(n1+1:n1+n2, :, :);
 	feat2 = zeros(n2, Kpi, N);
 	b_mat2 = zeros(n2, Kpi, N);
-	pt_pt_err2 = zeros(n2, 1);	
+	pt_pt_err2 = zeros(T, n2);	
 		
 	for t = 1 : T
 		disp(['iteration is ' num2str(t)]);
@@ -100,10 +100,8 @@ for SIFT_scale = 10:30
 			p_mat(gg, :, :) = p_mat_gg;
 		end   
 		disp('extracting features from LFPW train dataset');
-					       % stores pt-pt error for each image
 		parfor gg = 1:n2
 			p_mat_gg = p_mat2(gg, :, :);		
-			gg
 			pts = read_shape([folder2 names4(gg).name], num_of_pts);  
 			input_image = imread([folder2 names3(gg).name]); 	
 			gt_landmark = (pts-1);
@@ -200,7 +198,7 @@ for SIFT_scale = 10:30
 		end 
 		p_mat(n1+1:n1+n2, :, :) = p_mat2;
 		b_mat(n1+1:n1+n2, :, :) = b_mat2;
-		pt_pt_err(t, n1+1:n1+n2) = pt_pt_err2; 
+		pt_pt_err(t, n1+1:n1+n2) = pt_pt_err2(t, :); 
 		
 		pt_pt_err_all(t) = sum(pt_pt_err(t, :)) / n;
 		
@@ -213,12 +211,12 @@ for SIFT_scale = 10:30
 
 		%% save intermediate results per iteration
 		disp( 'saving results to output directory for this iteratoin');
-		save([outputDir 'pt_pt_err_all/pt_pt_err_all_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pt_pt_err_all');
-		save([outputDir 'b_mat/b_mat_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'b_mat');
-		save([outputDir 'Risks/Risk_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'Risk');
-		save([outputDir 'JPs/seperate/Jp_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'Jp');
-		save([outputDir 'ppp/ppp_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'ppp');
-		save([outputDir 'cum_err/cum_err_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'cum_err');		
+		save([outputDir 'pt_pt_err_all/pt_pt_err_all_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'pt_pt_err_all');
+		save([outputDir 'b_mat/b_mat_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'b_mat');
+		save([outputDir 'Risks/Risk_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'Risk');
+		save([outputDir 'JPs/seperate/Jp_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'Jp');
+		save([outputDir 'ppp/ppp_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'ppp');
+		save([outputDir 'cum_err/cum_err_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'cum_err');		
 	end 
 
 	%% save result
@@ -242,35 +240,42 @@ for SIFT_scale = 10:30
 	% legend(['iteration' num2str(t)]);
 
 	%% visualize iterations
-	% figure; hold on;
-	% for gg = 31 :60
-	% 	lm1 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(1, gg, 2:end), 1, [])';
-	% 	lm2 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(2, gg, 2:end), 1, [])';
-	% 	lm3 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(3, gg,  2:end), 1, [])';
-	% 	% lm4 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(4, gg,  2:end), 1, [])';
-	% 	% lm5 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(5, gg,  2:end), 1, [])';
-	% 	lm1 = reshape(lm1, [],2);
-	% 	lm2 = reshape(lm2, [],2);
-	% 	lm3 = reshape(lm3, [],2);
-	% 	% lm4 = reshape(lm4, [],2);
-	% 	% lm5 = reshape(lm5, [],2);
-	% 	pts = read_shape([folder1 names2(gg).name], num_of_pts);                         
-	% 	gt_landmark = (pts-1);
-	% 	gt_landmark = reshape(gt_landmark, 68, 2);
-	% 	input_image = imread([folder1 names1(gg).name]); 
-	% 	[~,~,Tt] = procrustes(shape.s0, gt_landmark);        
-	% 	scl = 1/Tt.b;
-	% 	gt_landmark = gt_landmark*(1/scl); 
-	% 	input_image = imresize(input_image, (1/scl));
-	% 	subplot(5,6,gg-30);
-	% 	imagesc(input_image); colormap(gray); hold on;
-	% 	plot(lm1(:,1), lm1(:,2), 'Color', 'black');
-	% 	plot(lm2(:,1), lm2(:,2), 'Color', 'red');
-	% 	plot(lm3(:,1), lm3(:,2), 'Color', 'blue');
-	% 	% plot(lm4(:,1), lm4(:,2), 'Color', 'yellow');
-	% 	% plot(lm5(:,1), lm5(:,2), 'Color', 'green');
-	% end
-	% 
+% 	pp = load([outputDir 'ppp/ppp_initial_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat']);
+% 	pp = pp.pp;
+% 	ppp = load([outputDir 'ppp/ppp_i-' num2str(T) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat']);
+% 	ppp = ppp.ppp;
+% 	figure; hold on;
+% 	for gg = 1:15
+% 		lm0 = myShape.s0 + myShape.Q(:, 2:end) * reshape(pp(1, gg, 2:end), 1, [])';
+% 		lm1 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(1, gg, 2:end), 1, [])';
+% % 		lm2 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(2, gg, 2:end), 1, [])';
+% % 		lm3 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(3, gg,  2:end), 1, [])';
+% 		% lm4 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(4, gg,  2:end), 1, [])';
+% 		% lm5 = myShape.s0 + myShape.Q(:, 2:end) * reshape(ppp(5, gg,  2:end), 1, [])';
+% 		lm0 = reshape(lm0, [],2);
+% 		lm1 = reshape(lm1, [],2);
+% % 		lm2 = reshape(lm2, [],2);
+% % 		lm3 = reshape(lm3, [],2);
+% 		% lm4 = reshape(lm4, [],2);
+% 		% lm5 = reshape(lm5, [],2);
+% 		pts = read_shape([folder1 names2(gg).name], num_of_pts);                         
+% 		gt_landmark = (pts-1);
+% 		gt_landmark = reshape(gt_landmark, 68, 2);
+% 		input_image = imread([folder1 names1(gg).name]); 
+% 		[~,~,Tt] = procrustes(shapemodelS0, gt_landmark);        
+% 		scl = 1/Tt.b;
+% 		gt_landmark = gt_landmark*(1/scl); 
+% 		input_image = imresize(input_image, (1/scl));
+% 		subplot(5,6,gg);
+% 		imagesc(input_image); colormap(gray); hold on;
+% 		plot(lm0(:,1), lm0(:,2), 'Color', 'green');
+% 		plot(lm1(:,1), lm1(:,2), 'Color', 'blue');
+% % 		plot(lm2(:,1), lm2(:,2), 'Color', 'red');
+% % 		plot(lm3(:,1), lm3(:,2), 'Color', 'blue');
+% 		% plot(lm4(:,1), lm4(:,2), 'Color', 'yellow');
+% 		% plot(lm5(:,1), lm5(:,2), 'Color', 'grey');
+% 	end
+% % 	
 	
 end
 

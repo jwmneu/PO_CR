@@ -75,7 +75,7 @@ for SIFT_scale = 10:30
 		myShapeQ = myShape.Q; 
 		A0P = myAppearance.A0' * P;  
 		shapemodelS0 = shapemodel.s0; 
-		Risk = load([inputDir  'Risks/Risk_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat']);
+		Risk = load([inputDir  'Risks/Riskl_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat']);
 		Risk = Risk.Risk;
 		%% parallel task - initialize perturbed shape parameters of image(gg), compute feature matrix
 		disp( 'extracting features on Helen test dataset and update shape parameter based on pretrained Jacobian and Risk');
@@ -170,9 +170,9 @@ for SIFT_scale = 10:30
 
 		%% save intermediate results per iteration
 		disp( 'saving results to output directory for this iteratoin');
-		save([outputDir 'pt_pt_err_all/pt_pt_err_all_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pt_pt_err_all');
-		save([outputDir 'ppp/ppp_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'ppp');
-		save([outputDir 'cum_err/cum_err_iteration-' num2str(t) '_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'cum_err');		
+		save([outputDir 'pt_pt_err_all/pt_pt_err_alll_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'pt_pt_err_all');
+		save([outputDir 'ppp/pppl_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'ppp');
+		save([outputDir 'cum_err/cum_errl_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'cum_err');		
 	end 
 
 	%% save result
