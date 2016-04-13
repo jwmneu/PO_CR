@@ -44,7 +44,8 @@ function [fd_stat] = face_det_stat()
 	[~,~,T] = procrustes(shape.s0, gt_landmark);     
 	scl = 1/T.b;
 	gt_landmark = gt_landmark*(1/scl);
-	bb_gt(gg, :) = [min(gt_landmark(:,1)), max(gt_landmark(:, 2)), max(gt_landmark(:,2)) - min(gt_landmark(:,2)), max(gt_landmark(:,1)) - min(gt_landmark(:,1))]; 
+	% bounding box format: x, y, width, height
+	bb_gt(gg, :) = [min(gt_landmark(:,1)), min(gt_landmark(:, 2)), max(gt_landmark(:,1)) - min(gt_landmark(:,1)), max(gt_landmark(:,2)) - min(gt_landmark(:,2))]; 
 	bounding_boxes(gg,:) = bounding_boxes(gg,:)*(1/scl);
 	% compute varance in mean size
 	scale = (bounding_boxes(gg,3) * bounding_boxes(gg,4)) / (bb_gt(gg, 3) * bb_gt(gg, 4));				% ratio between areas
@@ -74,7 +75,7 @@ function [fd_stat] = face_det_stat()
 	[~,~,T] = procrustes(shape.s0, gt_landmark);     
 	scl = 1/T.b;
 	gt_landmark = gt_landmark*(1/scl);
-	bb_gt(gg, :) = [min(gt_landmark(:,1)), max(gt_landmark(:, 2)), max(gt_landmark(:,2)) - min(gt_landmark(:,2)), max(gt_landmark(:,1)) - min(gt_landmark(:,1))]; 
+	bb_gt(gg, :) = [min(gt_landmark(:,1)), min(gt_landmark(:, 2)), max(gt_landmark(:,1)) - min(gt_landmark(:,1)),max(gt_landmark(:,2)) - min(gt_landmark(:,2)) ]; 
 	bounding_boxes(gg,:) = bounding_boxes(gg,:)*(1/scl);
 	% compute varance in mean size
 	scale = (bounding_boxes(gg,3) * bounding_boxes(gg,4)) / (bb_gt(gg, 3) * bb_gt(gg, 4));				% ratio between areas
