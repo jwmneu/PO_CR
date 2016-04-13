@@ -52,6 +52,9 @@ for SIFT_scale = 15:15
 		if(exist('pt_pt_err_all', 'dir') == 0)
 			mkdir('pt_pt_err_all');
 		end
+		if(exist('b_mat', 'dir') == 0)
+			mkdir('b_mat');
+		end
 		cd('../');
 		num_of_pts = 68;                                              % num of landmarks in the annotations
 		P = eye(size(myAppearance.A,1)) - myAppearance.A * myAppearance.A'; 
