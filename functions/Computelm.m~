@@ -1,0 +1,38 @@
+function [lm] = Computelm(p_nonrigid, p_rigid, gg, k, plotgg, input_image, gt_landmark )	% plotgg is a vector storing image indexes for plotting
+% p_rigid : ( 1, [] ) p_nonrigid : ( 1, [] ) 
+	shapemodel = load('shape_model.mat');
+	myShape = load('myShape.mat'); 
+	myShape = myShape.myShape;
+	shapemodel = shapemodel.shape;
+	num_of_pts = 68;
+	
+	if any(plotgg==gg) == 1 && k == 1
+		figure; 
+		imshow(input_image);hold on;
+		plot(gt_landmark(:,1), gt_landmark(:,2));
+	end
+	
+	% nonrigid parameters
+	lm = myShape.s0 + myShape.QNonrigid * p_nonrigid'; 
+	lm = reshape(lm , [], 2);
+	if any(plotgg==gg) == 1
+		plot(lm(:,1), lm(:,2),  'Color', 'red');
+	end
+
+	% scale
+	lm = lm * p_rigid(1,1);
+	if any(plotgg==gg) == 1
+		plot(lm(:,1), lm(:,2),  'Color', 'blue');
+	end
+
+	% rotation 
+	
+	Rot = [ cos(), -sin(); sin(); cos()];
+	
+	% x,y transformation
+	lm(:, 1)  = lm(:, 1) + p_rigid(1,2) * ones(num_of_pts,1); 
+	lm(:, 2) = lm(:, 2) + p_rigid(1,3) * ones(num_of_pts, 1); 
+	if any(plotgg==gg) == 1
+		plot(lm(:,1), lm(:,2),  'Color', 'green');
+	end
+end

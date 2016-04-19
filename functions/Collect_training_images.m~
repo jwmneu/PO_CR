@@ -1,0 +1,139 @@
+function [images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections] = Collect_training_images(Helen_numimages, LFPW_numimages) 
+	% expect input is  ( '../dataset/', ['helen'; 'lfpw'], [2000, 200])
+	global matfilesDir = [pwd '/../matfiles/'];
+	global 
+	images = {};
+	face_size = [];
+	gt_landmarks = [];
+	myShape_pRigid = [];
+	myShape_pNonRigid = [];
+	detections = {};
+		
+	[img, gt_lm, facesize, pRigid, pNonRigid, detec] = Collect_Helen(Helen_numimages);
+	images = cat(1, images, img');
+	face_size = cat(1, face_size, facesize);
+	gt_landmarks = cat(1, gt_landmarks, gt_lm);
+	myShape_pRigid = cat(1, myShape_pRigid, pRigid);
+	myShape_pNonRigid = cat(1, myShape_pNonRigid, pNonRigid);
+	detections = cat(1, detections, detec');
+
+	[img, gt_lm, facesize, pRigid, pNonRigid, detec] = Collect_LFPW(LFPW_numimages);
+	images = cat(1, images, img');
+	face_size = cat(1, face_size, facesize);
+	gt_landmarks = cat(1, gt_landmarks, gt_lm);
+	myShape_pRigid = cat(1, myShape_pRigid, pRigid);
+	myShape_pNonRigid = cat(1, myShape_pNonRigid, pNonRigid);
+	detections = cat(1, detections, detec');
+
+	% test correctness
+	[pt_pt_err] = plot_and_compute_err(1, images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections);
+	[pt_pt_err] = plot_and_compute_err(Helen_numimages + 1, images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections);	
+	
+end
+
+function [pt_pt_err] = plot_and_compute_err(gg, images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections)
+	
+	myShape = load([matfilesDir 'myShape.mat']); 
+	myShape = myShape.myShape;
+	figure; imshow(images{gg}); hold on;
+	lm = myShape.s0 + myShape.QNonrigid * reshape(myShape_pNonRigid(gg, :), [], 1); 
+	lm = reshape(lm , [], 2);
+	plot(lm(:,1), lm(:,2),  'Color', 'red');
+	lm = lm * myShape_pRigid(gg,1);
+	plot(lm(:,1), lm(:,2),  'Color', 'blue');
+	lm(:, 1)  = lm(:, 1) + myShape_pRigid(gg,2) * ones(num_of_pts,1); 
+	lm(:, 2) = lm(:, 2) + myShape_pRigid(gg,3) * ones(num_of_pts, 1); 
+	plot(lm(:,1), lm(:,2),  'Color', 'green');
+	rectangle(detections{gg});
+	pt_pt_err = compute_error(gt_landmarks(gg, :), lm );
+end
+
+function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, detection] = Collect_Helen(n)
+	addpath([pwd '/../matfiles/']);
+	addpath([pwd '/../functions/']);
+	datasetDir = [pwd '/../../dataset/'];
+	matfilesDir = [pwd '/../matfiles/'];
+	shapemodel = load([matfilesDir 'shape_model.mat']);
+	myShape = load([matfilesDir 'myShape.mat']); 
+	myAppearance = load([matfilesDir 'myAppearance']);
+	fd_stat = load([matfilesDir 'fd_stat']);
+	load([pwd '/../../BoundingBoxes/bounding_boxes_helen_trainset.mat']);		
+	shapemodel = shapemodel.shape;
+	myShape = myShape.myShape;
+	myAppearance = myAppearance.myAppearance;
+	fd_stat = fd_stat.fd_stat;
+	num_of_pts = 68;
+	folder = [datasetDir 'helen/trainset/'];
+	what = 'jpg';
+	names_img = dir([folder '*.' what]);
+	names_lm = dir([folder '*.pts']);
+	
+	myShape_pNonRigid = myShape.pNonrigid(1:n, :, :);
+	myShape_pRigid = myShape.pRigid(1:n, :, :);
+	
+	gt_landmarks = zeros(n, num_of_pts, 2);
+	face_size = zeros(n, 1);
+	images = {};
+	detection = {};
+	
+	for gg = 1:n
+		pts = read_shape([folder names_lm(gg).name], num_of_pts);   
+		gt_landmark = (pts-1);
+		gt_landmarks(gg, :, :) = reshape(gt_landmark, num_of_pts, 2);
+		face_size(gg, 1) =(max(gt_landmark(:,1)) - min(gt_landmark(:,1)) + max(gt_landmark(:,2)) - min(gt_landmark(:,2)))/2;
+		images{gg} = imread([folder names_img(gg).name]); 
+		detection{gg} = bounding_boxes{gg}.bb_detector;
+	end
+end
+
+
+function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, detection] = Collect_LFPW(n)
+	addpath([pwd '/../matfiles/']);
+	addpath([pwd '/../functions/']);
+	datasetDir = [pwd '/../../dataset/'];
+	matfilesDir = [pwd '/../matfiles/'];
+	shapemodel = load([matfilesDir 'shape_model.mat']);
+	myShape = load([matfilesDir 'myShape.mat']); 
+	myAppearance = load([matfilesDir 'myAppearance']);
+	fd_stat = load([matfilesDir 'fd_stat']);
+	load([pwd '/../../BoundingBoxes/bounding_boxes_lfpw_trainset.mat']);		
+	shapemodel = shapemodel.shape;
+	myShape = myShape.myShape;
+	myAppearance = myAppearance.myAppearance;
+	fd_stat = fd_stat.fd_stat;
+	num_of_pts = 68;
+	folder = [datasetDir 'lfpw/trainset/'];
+	what = 'png';
+	names_img = dir([folder '*.' what]);
+	names_lm = dir([folder '*.pts']);
+	
+	myShape_pNonRigid = myShape.pNonrigid(2001:(2000+n), :, :);
+	myShape_pRigid = myShape.pRigid(2001:(2000+n), :, :);
+	
+	gt_landmarks = zeros(n, num_of_pts, 2);
+	face_size = zeros(n, 1);
+	images = {};
+	detection = {};
+	
+	for gg = 1:n
+		pts = read_shape([folder names_lm(gg).name], num_of_pts);   
+		gt_landmark = (pts-1);
+		gt_landmarks(gg, :, :) = reshape(gt_landmark, num_of_pts, 2);
+		face_size(gg, 1) =(max(gt_landmark(:,1)) - min(gt_landmark(:,1)) + max(gt_landmark(:,2)) - min(gt_landmark(:,2)))/2;
+		images{gg} = imread([folder names_img(gg).name]); 
+		detection{gg} = bounding_boxes{gg}.bb_detector;
+	end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
