@@ -77,43 +77,10 @@ function [] = regressorsep()
 %% ridge regression to compute Jp
 				sep_joint = 1;
 				if sep_joint == 1
-					% debug 1 : ridge regression to compute Jp seperately
-					disp('doing ridge regression seperately');
-					debug_params = [2,3]; 
-					Jp = zeros(N, size(debug_params, 2));
-					for reg = 1:N
-						Jp(reg,:) = ridge( b_mat(:,reg), delta_p(:, debug_params), ridge_param);
-					end
-					
-					% recontruct to test correctness
-					reconstruct_b_mat =  delta_p(:, debug_params) * Jp';
-% 					save('debug/Jp', 'Jp');
-% 					save('debug/delta_p_new', 'delta_p_new');
-% 					save('debug/b_mat_new', 'b_mat_new');
-% 					save('debug/reconstruct_b_mat', 'reconstruct_b_mat');
-
+					 [Jp, reconstruct_b_mat] = ridge_seperate(b_mat, delta_p, N, ridge_param); 
 				else
-					% debug 2 : ridge regression jointly
-					disp('doing ridge regression jointly');
-					Jp_joint = zeros(N * KRigid,1);
-					delta_p_new_joint = repmat(delta_p, 1, N);
-					b_mat_new_joint = sum(b_mat, 2);
-					Jp_joint = ridge(b_mat_new_joint, delta_p_new_joint, ridge_param);
-					reconstruct_b_mat_joint = delta_p_new_joint * Jp_joint; 
-					start = 1;
-					nn = size(Jp_joint,1) / N; 
-					for reg = 1:N
-						Jp(reg,:) = Jp_joint(start : start + nn -1);
-						start = start + nn; 
-					end
-% 					save('debug/Jp_joint', 'Jp_joint');
-% 					save('debug/delta_p_new_joint', 'delta_p_new_joint');
-% 					save('debug/b_mat_new_joint', 'b_mat_new_joint');
-% 					save('debug/reconstruct_b_mat_joint', 'reconstruct_b_mat_joint');
+					[Jp, reconstruct_b_mat] = ridge_joint(b_mat, delta_p, N, ridge_param);
 				end
-
-	% 			% debug 3
-	% 			Jp_tmp = ridge(b_mat_new_joint, delta_p_new, ones(N, 1));
 
 %% update p and compute pt-pt error
 				disp('updating shape parameters for Helen train set and computing pt-pt error');
@@ -145,8 +112,32 @@ end
 
 
 %% ################################################     helper functions    ##################################################
-	
+
+function [Jp, reconstruct_b_mat] = ridge_seperate(b_mat, delta_p, N, ridge_param)
+	disp('doing ridge regression seperately');
+	debug_params = [2,3]; 
+	Jp = zeros(N, size(debug_params, 2));
+	for reg = 1:N
+		Jp(reg,:) = ridge( b_mat(:,reg), delta_p(:, debug_params), ridge_param);
+	end
+	reconstruct_b_mat =  delta_p(:, debug_params) * Jp';
+end
 				
+function [Jp, reconstruct_b_mat] = ridge_joint(b_mat, delta_p, N, ridge_param)
+	disp('doing ridge regression jointly');
+	Jp_joint = zeros(N * KRigid,1);
+	delta_p_new_joint = repmat(delta_p, 1, N);
+	b_mat_new_joint = sum(b_mat, 2);
+	Jp_joint = ridge(b_mat_new_joint, delta_p_new_joint, ridge_param);
+	reconstruct_b_mat = delta_p_new_joint * Jp_joint; 
+	start = 1;
+	nn = size(Jp_joint,1) / N; 
+	for reg = 1:N
+		Jp(reg,:) = Jp_joint(start : start + nn -1);
+		start = start + nn; 
+	end
+end
+
 function [features, b_mat] =  extract_SIFT_features(p_mat, TR_face_size, SIFT_scale, P, A0P, Kpi, n, n1, n2, lm_ind2, lm_pts )
 	disp( 'extracting features from training dataset');
 	num_feat_per_lm = 128;
