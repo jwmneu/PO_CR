@@ -49,7 +49,7 @@ gt_s(vec, :) = [];
 % responsibility to make the necessary adjustment so that it covers the same region, if you
 % want to obtain the best possible fitting performance.
 % Each bounding box is represented by 4 numbers. bb(1) and bb(2) are the row and column
-% coordinates of its top left corner. bb(3) is the height and bb(4) is the width. 
+% coordinates of its top left corner. bb(3) is the width and bb(4) is the height. 
 bb = bounding_boxes(gg, :);
 % To plot the image along with the 4 corners of the bb
 figure; imagesc(input_image); 

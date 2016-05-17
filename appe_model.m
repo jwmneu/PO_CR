@@ -1,5 +1,5 @@
 function [myAppearance, Feat, Feat_rec] = appe_model()             % features is already normalized
-
+    addpath('functions/');
     load shape_model;
     datasetDir = '../dataset/'; 
     testsetDir = '../test_data/'; 

@@ -10,10 +10,8 @@ function [ error_per_image ] = compute_error( ground_truth_all, detected_points_
 %   Output:
 %          error_per_image, size: num_of_images x 1
 
-
 num_of_images = size(ground_truth_all,3);
 num_of_points = size(ground_truth_all,1);
-
 error_per_image = zeros(num_of_images,1);
 
 for i =1:num_of_images
@@ -21,6 +19,8 @@ for i =1:num_of_images
     ground_truth_points  = ground_truth_all(:,:,i);
     if(num_of_points == 66 || num_of_points == 68)
         interocular_distance = norm(ground_truth_points(37,:)-ground_truth_points(46,:));
+    elseif (num_of_points == 5)				  % small model
+	interocular_distance = norm(ground_truth_points(2,:)-ground_truth_points(3,:));
     else
         interocular_distance = norm(ground_truth_points(37-17,:)-ground_truth_points(46-17,:));
     end

@@ -1,16 +1,17 @@
 %function [] = regressor_sep(SIFT_scale, Kpi, T, ridge_param, learning_rate, smallsize)
 clear;
 Kpi = 10;
-T = 3;
+T = 1;
 ridge_param = 0;
 learning_rate = 0.5;
-smallsize = 0;
+smallsize =0;
 
 for SIFT_scale = 10:30
 	%% initialization
 	cd 'vlfeat-0.9.20/toolbox'
 	vl_setup
 	cd '../../'
+	addpath('functions/');
 	shapemodel = load('shape_model.mat');
 	myShape = load('myShape.mat'); 
 	myAppearance = load('myAppearance');
@@ -23,6 +24,29 @@ for SIFT_scale = 10:30
 	testsetDir = '../test_data/'; 
 	inputDir = 'IntermediateResult/'; 
 	outputDir = 'ValidationResult/';
+	if(exist(outputDir, 'dir') == 0)
+		mkdir(outputDir);
+	end
+	cd(outputDir);
+	if(exist('ppp', 'dir') == 0)
+		mkdir('ppp');
+	end
+	if(exist('cum_err', 'dir') == 0)
+		mkdir('cum_err');
+	end
+	if(exist('JPs', 'dir') == 0)
+		mkdir('JPs');
+	end
+	if(exist('Risks', 'dir') == 0)
+		mkdir('Risks');
+	end
+	if(exist('pt_pt_err_all', 'dir') == 0)
+		mkdir('pt_pt_err_all');
+	end
+	if(exist('b_mat', 'dir') == 0)
+		mkdir('b_mat');
+	end
+	cd('../');
 	CLMDir = './';
 	folder1 = [datasetDir 'helen/testset/'];
 	what1 = 'jpg';
@@ -46,41 +70,72 @@ for SIFT_scale = 10:30
 		n2 = 20;
 		n = n1 + n2;
 	end
-	
+
 	%% cascaded regression for only Helen and LFPW dataset
 	p_mat = zeros(n, Kpi, K);
 	delta_p_mat = zeros(n, Kpi, K);
 	feat = zeros(n, Kpi, N);
 	b_mat = zeros(n, Kpi, N);
-	pt_pt_err = zeros(n, 1);				       % stores pt-pt error for each image
-	% initialize p_mat
+	pt_pt_err = zeros(T, n);				       % stores pt-pt error for each image
+	pt_pt_err0 = zeros(1, n);
+
+	%% initialize p_mat
 	myShape_p = myShape.p;
 	myShape_p(:, 4) = 0;	
 	fd_stat_std = [fd_stat.std(1:4), zeros(1, K-4)];
+	myShapeS0 = myShape.s0; 
+	myShapeQ = myShape.Q; 
 	for gg = 1:n
+		if gg <= n1
+			pts = read_shape([folder1 names2(gg).name], num_of_pts);                         % read ground truth landmarks
+		else
+			pts = read_shape([folder2 names4(gg-n1).name], num_of_pts);   
+		end
+		gt_landmark = (pts-1);
+		gt_landmark = reshape(gt_landmark, 68, 2);
+		face_size = (max(gt_landmark(:,1)) - min(gt_landmark(:,1)) + max(gt_landmark(:,2)) - min(gt_landmark(:,2)))/2;
+
+		pt_pt_err1 = zeros(1, Kpi);
 		for k = 1 : Kpi
-			p_mat(gg, k, :) = [myShape_p(gg, 1:4) , zeros(1, K-4)] + fd_stat_std .* rand(1, K)  - fd_stat_std / 2; 
+			rr1 =  fd_stat_std .* randn(1,K);
+			rr2 =  fd_stat.mean;
+			rr1(2:3);
+			p_mat(gg, k, :) = [myShape_p(gg, 1:4) , zeros(1, K-4)] + rr1/4; 
+			fitted_shape = myShapeS0 + myShapeQ * reshape(p_mat(gg, k, :), [], 1);
+			pt_pt_err1(1, k) = mean(abs(fitted_shape - reshape(gt_landmark, [], 1))) / face_size;
 		end
 		pp(1, gg, :) = p_mat(gg, 1, :);
+		pt_pt_err0(1, gg) = sum(pt_pt_err1) / Kpi;
 	end
-	save([outputDir 'ppp/ppp_initial_SIFTscale-' num2str(SIFT_scale) '_pertNum-' num2str(Kpi) '_ridgeparam-' num2str(ridge_param) '_learningrate-' num2str(learning_rate) '.mat'], 'pp');
+	pt_pt_err_all0 = sum(pt_pt_err0(1, :)) / n;
+	% cumulative curve
+	cum_err0 = zeros(size(var));
+	for ii = 1:length(cum_err0)
+		cum_err0(ii) = length(find(pt_pt_err0(1, :)<var(ii)))/length(pt_pt_err0(1, :));
+	end
+	save([outputDir 'ppp/ppp_initial_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'pp');
+	save([outputDir 'pt_pt_err_all/pt_pt_err_all_initial_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'pt_pt_err_all0');
+	save([outputDir 'cum_err/cum_err_all_initial_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat'], 'cum_err0');
+
+	%% iterations
 	p_mat2 = p_mat(n1+1:n1+n2, :, :);
 	feat2 = zeros(n2, Kpi, N);
 	b_mat2 = zeros(n2, Kpi, N);
-	pt_pt_err2 = zeros(n2, 1);	
-		
+	pt_pt_err2 = zeros(T, n2);	
 	for t = 1 : T
 		disp(['iteration is ' num2str(t)]);
 		myShapeS0 = myShape.s0; 
 		myShapeQ = myShape.Q; 
 		A0P = myAppearance.A0' * P;  
 		shapemodelS0 = shapemodel.s0; 
-		Risk = load([inputDir  'Risks/Riskl_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat']);
+		Risk = load([inputDir  'Risks/Risk_i-' num2str(t) '_S-' num2str(SIFT_scale) '_P-' num2str(Kpi) '_R-' num2str(ridge_param) '_L-' num2str(learning_rate) '.mat']);
 		Risk = Risk.Risk;
 		%% parallel task - initialize perturbed shape parameters of image(gg), compute feature matrix
 		disp( 'extracting features on Helen test dataset and update shape parameter based on pretrained Jacobian and Risk');
 		parfor gg = 1 : n1
-			p_mat_gg = p_mat(gg, :, :);		
+			p_mat_gg = p_mat(gg, :, :);	
+			feat_temp = feat(gg, : ,:);
+			b_mat_temp = b_mat(gg, :, :);
 			pts = read_shape([folder1 names2(gg).name], num_of_pts);                         % read ground truth landmarks
 			input_image = imread([folder1 names1(gg).name]); 
 			gt_landmark = (pts-1);
@@ -96,13 +151,13 @@ for SIFT_scale = 10:30
 				lm = reshape(lm, 68, 2) * (1/scl);
 				lm = lm * p_mat_gg(1, k, 1);				% scale
 				Sfeat = SIFT_features(input_image, lm, SIFT_scale);
-				feat(gg, k, :) = reshape(Sfeat, 1, []); 
-				b_mat(gg, k, :) =  reshape(feat(gg, k, :), 1, []) - A0P;
+				feat_temp(1, k, :) = reshape(Sfeat, 1, []); 
+				b_mat_temp(1, k, :) =  reshape(feat_temp(1, k, :), 1, []) - A0P;
 			end
-			
+
 			% update p_mat
 			for k = 1 : Kpi
-				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat(gg, k, :)), 1, N)')';
+				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat_temp(1, k, :)), 1, N)')';
 			end
 			ppp(t, gg, :) = (p_mat_gg(1, 1, :));
 			p_mat(gg, :, :) = p_mat_gg; 
@@ -115,11 +170,14 @@ for SIFT_scale = 10:30
 				pt_pt_err1(1, k) = mean(abs(fitted_shape - reshape(gt_landmark, [], 1))) / face_size;
 			end
 			pt_pt_err(t, gg) = sum(pt_pt_err1) / Kpi;
-			
+			feat(gg, :, :) = feat_temp(1, :, :);
+			b_mat(gg, :, :) = b_mat_temp;
 		end   
 		disp('extracting features from LFPW test dataset and update shape parameter based on pretrained Jacobian and Risk');
 		parfor gg = 1:n2
-			p_mat_gg = p_mat2(gg, :, :);		
+			p_mat_gg = p_mat2(gg, :, :);
+			feat_temp = feat2(gg, :, :);
+			b_mat_temp = b_mat2(gg, :, :);
 			gg
 			pts = read_shape([folder2 names4(gg).name], num_of_pts);  
 			input_image = imread([folder2 names3(gg).name]); 	
@@ -136,12 +194,12 @@ for SIFT_scale = 10:30
 				lm = reshape(lm, 68, 2) * (1/scl);
 				lm = lm * p_mat_gg(1, k, 1);				% scale
 				Sfeat = SIFT_features(input_image, lm, SIFT_scale);
-				feat2(gg, k, :) = reshape(Sfeat, 1, []); 
-				b_mat2(gg, k, :) =  reshape(feat2(gg, k, :), 1, []) - A0P;
+				feat_temp(1, k, :) = reshape(Sfeat, 1, []); 
+				b_mat_temp(1, k, :) =  reshape(feat_temp(1, k, :), 1, []) - A0P;
 			end
 			% update p_mat
 			for k = 1 : Kpi
-				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat2(gg, k, :)), 1, N)')';
+				p_mat_gg(1, k, :) = (reshape(p_mat_gg(1, k, :), 1, K )' + learning_rate * Risk * reshape((b_mat_temp(1, k, :)), 1, N)')';
 			end
 			ppp(t, gg, :) = (p_mat_gg(1, 1, :));
 			p_mat2(gg, :, :) = p_mat_gg; 
@@ -154,13 +212,14 @@ for SIFT_scale = 10:30
 				pt_pt_err1(1, k) = mean(abs(fitted_shape - reshape(gt_landmark, [], 1))) / face_size;
 			end
 			pt_pt_err2(t, gg) = sum(pt_pt_err1) / Kpi;
-			
+			feat2(gg, :, :) = feat_temp(1, :, :);
+			b_mat(gg, :, :) = b_mat_temp(1, :, :);
 		end                       
 		p_mat(n1+1:n1+n2, :, :) = p_mat2;
 		b_mat(n1+1:n1+n2, :, :) = b_mat2;
 		pt_pt_err(t, n1+1:n1+n2) = pt_pt_err2; 
 		pt_pt_err_all(t) = sum(pt_pt_err(t, :)) / n;
-		
+
 		%% cumulative curve
 		cum_err = zeros(size(var));
 		for ii = 1:length(cum_err)
@@ -178,7 +237,7 @@ for SIFT_scale = 10:30
 	%% save result
 	disp( 'finish all iterations in validation. saving results')
 	save([outputDir 'cum_err_full.mat'], 'cum_err_full');
-	
+
 	%% plot cumulative error curve
 	% figure; hold on;
 	% 
@@ -223,8 +282,6 @@ for SIFT_scale = 10:30
 	% 	% plot(lm4(:,1), lm4(:,2), 'Color', 'yellow');
 	% 	% plot(lm5(:,1), lm5(:,2), 'Color', 'green');
 	% end
-	% 
-	
 end
 
 

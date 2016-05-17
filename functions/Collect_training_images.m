@@ -1,29 +1,48 @@
-function [images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections] = Collect_training_images(Helen_numimages, LFPW_numimages) 
+function [images, TR_face_size, TR_gt_landmarks, TR_myShape_pRigid, TR_myShape_pNonRigid, TR_detections] = Collect_training_images(Helen_numimages, LFPW_numimages) 
 	% expect input is  ( '../dataset/', ['helen'; 'lfpw'], [2000, 200])
-	
+	global VERSIONCHECK; 
+	VERSIONCHECK = 'SM_1';
 	images = {};
-	face_size = {};
-	gt_landmarks = {};
-	myShape_pRigid = [];
-	myShape_pNonRigid =[];
-	detections = {};
+	TR_face_size = {};
+	TR_gt_landmarks = {};
+	TR_myShape_pRigid = [];
+	TR_myShape_pNonRigid =[];
+	TR_detections = {};
 		
 	[img, gt_lm, facesize, pRigid, pNonRigid, detec] = Collect_Helen(Helen_numimages);
 	images = cat(1, images, img');
-	face_size = cat(1, face_size, facesize');
-	gt_landmarks = cat(1, gt_landmarks, gt_lm');
-	myShape_pRigid = cat(1, myShape_pRigid, pRigid);
-	myShape_pNonRigid = cat(1, myShape_pNonRigid, pNonRigid);
-	detections = cat(1, detections, detec');
+	TR_face_size = cat(1, TR_face_size, facesize');
+	TR_gt_landmarks = cat(1, TR_gt_landmarks, gt_lm');
+	TR_myShape_pRigid = cat(1, TR_myShape_pRigid, pRigid);
+	TR_myShape_pNonRigid = cat(1, TR_myShape_pNonRigid, pNonRigid);
+	TR_detections = cat(1, TR_detections, detec');
 
 	[img, gt_lm, facesize, pRigid, pNonRigid, detec] = Collect_LFPW(LFPW_numimages);
 	images = cat(1, images, img');
-	face_size = cat(1, face_size, facesize');
-	gt_landmarks = cat(1, gt_landmarks, gt_lm');
-	myShape_pRigid = cat(1, myShape_pRigid, pRigid);
-	myShape_pNonRigid = cat(1, myShape_pNonRigid, pNonRigid);
-	detections = cat(1, detections, detec');
+	TR_face_size = cat(1, TR_face_size, facesize');
+	TR_gt_landmarks = cat(1, TR_gt_landmarks, gt_lm');
+	TR_myShape_pRigid = cat(1, TR_myShape_pRigid, pRigid);
+	TR_myShape_pNonRigid = cat(1, TR_myShape_pNonRigid, pNonRigid);
+	TR_detections = cat(1, TR_detections, detec');
 
+% 	load('CollectedTrainingDataset/TR_detections.mat'); 
+% 	load('CollectedTrainingDataset/TR_face_size.mat');
+% 	load('CollectedTrainingDataset/TR_gt_landmarks.mat');
+% 	load('CollectedTrainingDataset/TR_myShape_pNonRigid.mat');
+% 	load('CollectedTrainingDataset/TR_myShape_pRigid.mat');
+% 	TR_face_size = face_size;
+% 	TR_gt_landmarks = gt_landmarks;
+% 	TR_myShape_pRigid = myShape_pRigid;
+% 	TR_myShape_pNonRigid = myShape_pNonRigid;
+% 	TR_detections = detections;
+	
+	% save for further use
+% 	save('CollectedTrainingDataset/TR_face_size.mat', 'TR_face_size');
+% 	save('CollectedTrainingDataset/TR_gt_landmarks.mat', 'TR_gt_landmarks');
+% 	save('CollectedTrainingDataset/TR_myShape_pRigid.mat', 'TR_myShape_pRigid');
+% 	save('CollectedTrainingDataset/TR_myShape_pNonRigid.mat', 'TR_myShape_pNonRigid');
+% 	save('CollectedTrainingDataset/TR_detections.mat', 'TR_detections');
+	
 	% test correctness
 % 	[pt_pt_err1] = plot_and_compute_err(1, images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections);
 % 	[pt_pt_err2] = plot_and_compute_err(Helen_numimages + 1, images, face_size, gt_landmarks, myShape_pRigid, myShape_pNonRigid, detections);	
@@ -34,6 +53,9 @@ function [pt_pt_err] = plot_and_compute_err(gg, images, face_size, gt_landmarks,
 	matfilesDir = [pwd '/matfiles/'];
 	myShape = load([matfilesDir 'myShape.mat']); 
 	myShape = myShape.myShape;
+	if myShape.version ~= VERSIONCHECK
+		disp('myShape model is stale');
+	end
 	num_of_pts = 68;
 	figure; imshow(images{gg}); hold on;
 	lm = myShape.s0 + myShape.QNonrigid * reshape(myShape_pNonRigid(gg, :), [], 1); 
@@ -50,6 +72,7 @@ function [pt_pt_err] = plot_and_compute_err(gg, images, face_size, gt_landmarks,
 end
 
 function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, detection] = Collect_Helen(n)
+	global VERSIONCHECK; 
 	addpath([pwd '/matfiles/']);
 	addpath([pwd '/functions/']);
 	datasetDir = [pwd '/../dataset/'];
@@ -57,12 +80,18 @@ function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, de
 	shapemodel = load([matfilesDir 'shape_model.mat']);
 	myShape = load([matfilesDir 'myShape.mat']); 
 	myAppearance = load([matfilesDir 'myAppearance']);
-	fd_stat = load([matfilesDir 'fd_stat']);
+	fd_stat = load([matfilesDir 'fd_stat_SM']);
 	load([pwd '/../BoundingBoxes/bounding_boxes_helen_trainset.mat']);		
 	shapemodel = shapemodel.shape;
 	myShape = myShape.myShape;
+	if myShape.version ~= VERSIONCHECK
+		disp('myShape model is stale');
+	end
 	myAppearance = myAppearance.myAppearance;
 	fd_stat = fd_stat.fd_stat;
+	if fd_stat.version ~= VERSIONCHECK
+		disp('fd_stat model is stale');
+	end
 	num_of_pts = 68;
 	folder = [datasetDir 'helen/trainset/'];
 	what = 'jpg';
@@ -92,6 +121,7 @@ end
 
 
 function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, detection] = Collect_LFPW(n)
+	global VERSIONCHECK; 
 	addpath([pwd '/matfiles/']);
 	addpath([pwd '/functions/']);
 	datasetDir = [pwd '/../dataset/'];
@@ -99,12 +129,18 @@ function [images, gt_landmarks, face_size, myShape_pRigid, myShape_pNonRigid, de
 	shapemodel = load([matfilesDir 'shape_model.mat']);
 	myShape = load([matfilesDir 'myShape.mat']); 
 	myAppearance = load([matfilesDir 'myAppearance']);
-	fd_stat = load([matfilesDir 'fd_stat']);
+	fd_stat = load([matfilesDir 'fd_stat_SM']);
 	load([pwd '/../BoundingBoxes/bounding_boxes_lfpw_trainset.mat']);		
 	shapemodel = shapemodel.shape;
 	myShape = myShape.myShape;
+	if myShape.version ~= VERSIONCHECK
+		disp('myShape model is stale');
+	end
 	myAppearance = myAppearance.myAppearance;
 	fd_stat = fd_stat.fd_stat;
+	if fd_stat.version ~= VERSIONCHECK
+		disp('fd_stat model is stale');
+	end
 	num_of_pts = 68;
 	folder = [datasetDir 'lfpw/trainset/'];
 	what = 'png';

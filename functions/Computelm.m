@@ -1,10 +1,12 @@
-function [lm] = Computelm(p_nonrigid, p_rigid, gg, k, plotgg, input_image, gt_landmark )	% plotgg is a vector storing image indexes for plotting
-% p_rigid : ( 1, [] ) p_nonrigid : ( 1, [] ) 
-	shapemodel = load('shape_model.mat');
-	myShape = load('myShape.mat'); 
-	myShape = myShape.myShape;
+function [lm] = Computelm(p_nonrigid, p_rigid, gg, k, plotgg, input_image, gt_landmark)	% plotgg is a vector storing image indexes for plotting
+	disp('Computelm should not be called after the new shape model');
+	% p_rigid : ( 1, [] ) p_nonrigid : ( 1, [] ) 
+	modelDir = 'matfiles/';
+	shapemodel = load([modelDir 'shape_model.mat']);
+	myShape = load([modelDir 'myShape.mat']); 
 	shapemodel = shapemodel.shape;
-	num_of_pts = 68;
+	myShape = myShape.myShape;
+	num_of_pts = size(myShape.s0, 1) / 2;
 	
 	if any(plotgg==gg) == 1 && k == 1
 		figure; 

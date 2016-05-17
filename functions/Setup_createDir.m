@@ -19,14 +19,14 @@ function [] = Setup_createDir(outputDir, debug)
 	if(exist('Risks', 'dir') == 0)
 		mkdir('Risks');
 	end
-	if(exist('pt_pt_err_all', 'dir') == 0)
-		mkdir('pt_pt_err_all');
+	if(exist('pt_pt_err_image', 'dir') == 0)
+		mkdir('pt_pt_err_image');
 	end
 	if(exist('b_mat', 'dir') == 0)
 		mkdir('b_mat');
 	end
-	if(exist('pt_pt_err', 'dir') == 0)
-		mkdir('pt_pt_err');
+	if(exist('pt_pt_err_allimages', 'dir') == 0)
+		mkdir('pt_pt_err_allimages');
 	end
 	if(exist('delta_p', 'dir') == 0)
 		mkdir('delta_p');
