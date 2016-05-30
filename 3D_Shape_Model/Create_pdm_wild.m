@@ -1,0 +1,234 @@
+function [KNonrigid] = Create_pdm_wild(KTorresani, energy)
+	% run this script in folder PO_CR_code_v1
+	% build shape model for 3d landmarks
+	%  Collect_wild_annotations;
+
+	% reconstruct 3D landmarks for Helen and LFPW from 2D groundtruth landmarks
+	% Reconstruct_Torresani;
+
+	%% Create the PDM using PCA, from the recovered 3D data
+	clear
+	shapeModelDir = '3D_Shape_Model/'; 
+	% load('Torr_wild');
+	
+	% default values
+	if nargin == 0
+		KTorresani = 15;
+		energy = 0.8; 
+	end
+	load([shapeModelDir 'Helen_LFPW_5lms_KTorresani-' num2str(KTorresani) ]);
+
+	% need to still perform procrustes though
+	% ground truth positions (x, y, z)
+	x = P3(1:end/3,:);
+	y = P3(end/3+1:2*end/3,:);
+
+	% To make sure that PDM faces the right way (positive Z towards the screen)
+	z = -P3(2*end/3+1:end,:);
+
+	% get normalizaed shape of images, mean shape
+	[ normX, normY, normZ, meanShape, Transform ] = ProcrustesAnalysis3D(x,y,z, true);
+
+	% iteratively normalized observations
+	observations = [normX normY normZ];
+
+	% build shape model
+	[princComp, score, eigenVals] = princomp(observations,'econ');
+	% Keeping most variation
+	totalSum = sum(eigenVals);
+	count = numel(eigenVals);
+	for i=1:numel(eigenVals)
+	   if ((sum(eigenVals(1:i)) / totalSum) >= energy)
+	      count = i;
+	      break;
+	   end
+	end
+
+	V = princComp(:,1:count);
+	E = eigenVals(1:count);
+	M = meanShape(:);
+
+	% Now normalise it to have actual world scale ( to match real face size)
+	lPupil = [(M(37) + M(40))/2; (M(37 + 68) + M(40 + 68))/2];
+	rPupil = [(M(43) + M(46))/2; (M(43 + 68) + M(46 + 68))/2];
+
+	dist = norm(lPupil - rPupil,2);
+
+	% average human interocular distance is 65mm
+	scaling = 65 / dist;
+
+	% normalise the mean values as well
+	M(1:end/3) = M(1:end/3) - mean(M(1:end/3));
+	M(end/3+1:2*end/3) = M(end/3+1:2*end/3) - mean(M(end/3+1:2*end/3));
+	M(2*end/3+1:end) = M(2*end/3+1:end) - mean(M(2*end/3+1:end));
+
+	M = M * scaling;
+	E = E * scaling .^ 2;
+
+	% orthonormalise V
+	scalingV = sqrt(sum(V.^2));
+	V = V ./ repmat(scalingV, numel(M),1);
+
+	E = E .* (scalingV') .^ 2;
+
+	%% Also align the model to a Multi-PIE one for accurate head orientation
+	% also align the mean shape model (an aligned 68 point PDM from Multi-PIE
+	% dataset) Multi-PIE is a dataset of CMU
+	lm_pts = 5;
+	lm_ind1 = [34, 37, 46, 61, 65]; 
+	lm_ind2 = [34, 37, 46, 61, 65, 102, 105, 114, 129, 133];
+	lm_ind3 = [34, 37, 46, 61, 65, 102, 105, 114, 129, 133, 170, 173, 182, 197, 201]; 
+
+	M_wild = M;
+	% subsample from pdm_68_multi_pi to only 5 landmarks
+	M_wild = M_wild(lm_ind3, :);
+
+	load('pdm_68_multi_pie.mat', 'M');
+
+	% subsample from pdm_68_multi_pi to only 5 landmarks
+	V = V(lm_ind3, :);
+	M = M(lm_ind3, :);
+
+
+	M_align = M;
+
+	n_points = numel(M)/3;
+
+	M_wild = reshape(M_wild, n_points, 3);
+
+	% work out the translation and rotation needed
+	[ R, T ] = AlignShapesKabsch(M_wild, reshape(M_align, n_points,3));
+
+	% Transform the wild one to be in the same reference as the Multi-PIE one
+	M_aligned = (R * M_wild')';
+
+	M_aligned(:,1) = M_aligned(:,1) + T(1);
+	M_aligned(:,2) = M_aligned(:,2) + T(2);
+	M_aligned(:,3) = M_aligned(:,3) + T(3);
+
+	M_aligned = M_aligned(:);
+	V_aligned = V;
+
+	% need to align the principal components as well
+	for i=1:size(V,2)
+
+	    V_aligned_pie_curr = (R * reshape(V(:,i), n_points, 3)')';
+	    V_aligned(:,i) = V_aligned_pie_curr(:);    
+
+	end
+
+	V = V_aligned;
+	M = M_aligned;
+
+	KNonrigid = size(V, 2);
+	K = 6 + KNonrigid;
+	[M_2D] = getShapeFrom3DParam(M, V, [1, zeros(1, K-1)]);
+
+	% writePDM(V, E, M, 'pdm_5_aligned_wild_SM.txt');
+	version = 'SM_3D_1'; 
+	saveDir = 'matfiles/'; 
+	save([saveDir 'myShapeSM3D_KTorresani-' num2str(KTorresani) '_energy-' num2str(energy) '_KNonrigid-' num2str(KNonrigid) '.mat'], 'E', 'M', 'V', 'M_2D', 'version', ...
+		'KTorresani', 'energy', 'KNonrigid');		% E: eigenvalue, M: mean, V: eigenvector
+
+	%% reconstruct landmarks and save shape parameters for every image
+
+	% reconstruct landmarks of training dataset from shape model to check correctness
+	gt3DParamDir = ['TR_3D_params_KTorresani-' num2str(KTorresani) '_energy-' num2str(energy) '_KNonrigid-' num2str(KNonrigid) '/'];
+	if(exist(gt3DParamDir, 'dir') == 0)
+		mkdir(gt3DParamDir);
+	end
+
+	gtParamDir = 'TR_params/';
+	load([gtParamDir 'TR_gt_landmarks.mat']);
+	load([gtParamDir 'TR_face_size.mat']);
+	n = 2811; 
+	% record the shape parameters for every image
+	TR_3D_scale = cell(n, 1);
+	TR_3D_rotation = cell(n, 1);
+	TR_3D_rotation_euler = cell(n,1);
+	TR_3D_translation = cell(n, 1);
+	TR_3D_nonrigid_params = cell(n, 1);
+	TR_myShape_3D_p = cell(n,1);
+	pt_pt_err_image = zeros(n, 1);
+
+	% plot cum error of training dataset
+	for gg = 1 : n
+		shape2D = TR_gt_landmarks{gg};
+		shape2D = shape2D(lm_ind1, :); 
+		face_size = TR_face_size{gg};
+		[ a, R, T, T3D, params, error, shapeOrtho ] = fit_PDM_ortho_proj_to_2D( M, E, V, shape2D);
+		TR_3D_scale{gg} = a; 
+		TR_3D_rotation{gg} = R; 
+		TR_3D_rotation_euler{gg} = Rot2Euler(R);
+		TR_3D_translation{gg} = T'; 
+		TR_3D_nonrigid_params{gg} = params'; 
+		TR_myShape_3D_p{gg} = [TR_3D_scale{gg}, TR_3D_translation{gg}(1,1), TR_3D_translation{gg}(1,2), TR_3D_rotation_euler{gg}, TR_3D_nonrigid_params{gg}];
+
+		p = [TR_3D_scale{gg}, TR_3D_translation{gg}, TR_3D_rotation_euler{gg},TR_3D_nonrigid_params{gg}];
+		[lm] = getShapeFrom3DParam(M, V, p);
+		pt_pt_err_image(gg) = my_compute_error(shape2D, lm, face_size );
+	end
+
+	[pt_pt_err_allimages, cum_err] = Compute_cum_error(pt_pt_err_image, n, gt3DParamDir, 'cum error of 3D shape model, training dataset', 1);
+
+
+	% reconstruct landmarks of testing dataset from shape model to check correctness
+	gtParamDir = 'TR_testing_params/';
+	load([gtParamDir 'TR_testing_gt_landmarks.mat']);
+	load([gtParamDir 'TR_testing_face_size.mat']);
+	n = 553; 
+	% record the shape parameters for every image
+	TR_3D_testing_scale = cell(n, 1);
+	TR_3D_testing_rotation = cell(n, 1);
+	TR_3D_testing_rotation_euler = cell(n,1);
+	TR_3D_testing_translation = cell(n, 1);
+	TR_3D_testing_nonrigid_params = cell(n, 1);
+	TR_myShape_3D_testing_p = cell(n,1);
+	pt_pt_err_image_testing = zeros(n, 1);
+
+	% plot cum error of training dataset
+	for gg = 1 : n
+		shape2D = TR_testing_gt_landmarks{gg};
+		shape2D = shape2D(lm_ind1, :); 
+		face_size = TR_testing_face_size{gg};
+		% from 2D landmarks, find 3D shape parameters and 3D landmarks by the 3D shape model
+		[ a, R, T, T3D, params, error, shapeOrtho ] = fit_PDM_ortho_proj_to_2D( M, E, V, shape2D);
+		TR_3D_testing_scale{gg} = a; 
+		TR_3D_testing_rotation{gg} = R; 
+		TR_3D_testing_rotation_euler{gg} = Rot2Euler(R);
+		TR_3D_testing_translation{gg} = T'; 
+		TR_3D_testing_nonrigid_params{gg} = params'; 
+		TR_myShape_3D_testing_p{gg} = [TR_3D_scale{gg}, TR_3D_translation{gg}(1,1), TR_3D_translation{gg}(1,2), TR_3D_rotation_euler{gg}, TR_3D_nonrigid_params{gg}];
+		p = [a, T', Rot2Euler(R), params'];
+		[lm] = getShapeFrom3DParam(M, V, p);
+		pt_pt_err_image_testing(gg) = my_compute_error(shape2D, lm, face_size );
+	end
+
+	[pt_pt_err_allimages_testing, cum_err_testing] = Compute_cum_error(pt_pt_err_image_testing, n, gt3DParamDir, 'cum error of 3D shape model, testing dataset', 1);
+
+	% save shape parameters of training and testing dataset
+	version_param = struct('KTorresani', KTorresani, 'energy', energy, 'KNonrigid', KNonrigid);
+	save([gt3DParamDir 'TR_3D_scale.mat'], 'TR_3D_scale');
+	save([gt3DParamDir 'TR_3D_rotation.mat'], 'TR_3D_rotation');
+	save([gt3DParamDir 'TR_3D_rotation_euler.mat'], 'TR_3D_rotation_euler');
+	save([gt3DParamDir 'TR_3D_translation.mat'], 'TR_3D_translation');
+	save([gt3DParamDir 'TR_3D_nonrigid_params.mat'], 'TR_3D_nonrigid_params');
+	save([gt3DParamDir 'TR_myShape_3D_p.mat'], 'TR_myShape_3D_p');
+	save([gt3DParamDir 'pt_pt_err_image.mat'], 'pt_pt_err_image');
+	save([gt3DParamDir 'pt_pt_err_allimages.mat'], 'pt_pt_err_allimages');
+	save([gt3DParamDir 'cum_err.mat'], 'cum_err');
+	save([gt3DParamDir 'version_param.mat'], 'version_param');
+	save([gt3DParamDir 'TR_3D_testing_scale.mat'], 'TR_3D_testing_scale');
+	save([gt3DParamDir 'TR_3D_testing_rotation.mat'], 'TR_3D_testing_rotation');
+	save([gt3DParamDir 'TR_3D_testing_rotation_euler.mat'], 'TR_3D_testing_rotation_euler');
+	save([gt3DParamDir 'TR_3D_testing_translation.mat'], 'TR_3D_testing_translation');
+	save([gt3DParamDir 'TR_3D_testing_nonrigid_params.mat'], 'TR_3D_testing_nonrigid_params');
+	save([gt3DParamDir 'TR_myShape_3D_testing_p.mat'], 'TR_myShape_3D_testing_p');
+	save([gt3DParamDir 'pt_pt_err_image_testing.mat'], 'pt_pt_err_image_testing');
+	save([gt3DParamDir 'pt_pt_err_allimages_testing.mat'], 'pt_pt_err_allimages_testing');
+	save([gt3DParamDir 'cum_err_testing.mat'], 'cum_err_testing');
+
+end
+
+
+

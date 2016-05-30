@@ -15,9 +15,11 @@ function [] = SM_Extract_Perturbed_SIFT_Features()
 	cd('../../');
 	gtParamDir = 'TR_params/';
 	modelDir = 'matfiles/';
+	shapemodel = load([modelDir 'shape_model.mat']);
 	myShape = load([modelDir 'myShape.mat']); 
 	myAppearance = load([modelDir 'myAppearanceSM.mat']);
 	fd_stat = load([modelDir 'fd_stat_SM.mat']);
+	shapemodel = shapemodel.shape;
 	myShape = myShape.myShape;
 	if myShape.version ~= VERSIONCHECK
 		disp('myShape model is stale');
@@ -49,6 +51,10 @@ function [] = SM_Extract_Perturbed_SIFT_Features()
 	load([gtParamDir 'TR_gt_landmarks.mat']);
 	load([gtParamDir 'TR_myShape_p.mat']);
 	
+	% initialize learning parameters
+	fd_stat_std = fd_stat.std;
+	fd_stat_mean = fd_stat.mean;
+
 	p_mat_gt = zeros(n * Kpi, K);
 	p_mat_initialization = zeros(n * Kpi, K);
 	delta_p_initialization = zeros(n * Kpi, K);
@@ -63,9 +69,8 @@ function [] = SM_Extract_Perturbed_SIFT_Features()
 	disp( 'initializing perturbed shape parameters');
 	
 	noise_scale = 1;					% scale the noise level to match the cum_error curve of initialization to that in the paper
-	perturb_param = [2:3 5:K];
-	OutputDir = ['../PerturbationInitialization_SM_0.3_translation_1_nonrigid_' mat2str(perturb_param) '/'];
-% 	OutputDir = ['../PerturbationInitialization_SM_' num2str(noise_scale) '_' mat2str(perturb_param) '/'];
+	perturb_param = [5:K];
+	OutputDir = ['../PerturbationInitialization_SM_' num2str(noise_scale) '_' mat2str(perturb_param) '/'];
 	if(exist(OutputDir, 'dir') == 0)
 		mkdir(OutputDir);
 	end
@@ -79,17 +84,15 @@ function [] = SM_Extract_Perturbed_SIFT_Features()
 			
 			% construct noise
 			noise = zeros(1, K);
-			noise(1,1) = fd_stat.mean_delta_scale + fd_stat.std_delta_scale * randn(1,1); 
-			noise(1, 2:3) = 0.3 * (fd_stat.mean_delta_translation + fd_stat.std_delta_translation .* randn(1,2)) * face_size; 
+			noise(1, 2:3) = (fd_stat.mean_delta_translation + fd_stat.std_delta_translation .* randn(1,2)) * face_size; 
 			noise(1, 4) =fd_stat.mean_rotation_angle + fd_stat.var_rotation_angle * randn(1); 
 			noise(1, 5:end) = fd_stat.mean_nonrigid_params + fd_stat.std_nonrigid_params .* randn(1, KNonrigid); 
 			
 			% add noise to scale
-% 			p_mat_initialization((gg-1) * Kpi + k, 1) = p_mat_initialization((gg-1) * Kpi + k, 1) * noise(1,1); 
+% 			p_mat_initialization((gg-1) * Kpi + k, 1) = p_mat_initialization((gg-1) * Kpi + k, 1) * (fd_stat_mean(1, 1) + fd_stat_std(1,1) * randn(1)); 
 
 			% add noise to choisen parameters
 			p_mat_initialization((gg-1) * Kpi + k, perturb_param) = p_mat_initialization((gg-1) * Kpi + k, perturb_param) + noise_scale * noise(1, perturb_param);
-			
 			% compute delta p
 			delta_p_initialization((gg-1) * Kpi + k, :) = p_mat_gt( (gg - 1) * Kpi + k, :) - p_mat_initialization((gg-1) * Kpi + k, :); 
 			% reconstruct landmarks
@@ -99,7 +102,7 @@ function [] = SM_Extract_Perturbed_SIFT_Features()
 		% compute error and cumulative curve
 		 pt_pt_err0_image(gg) = sum(pt_pt_err0_temp(gg, :)) / Kpi;
 	end
-	[pt_pt_err0_allimages, cum_err0] = Compute_cum_error(pt_pt_err0_image, n, OutputDir, 'cum error of initialization', 0); 
+	[pt_pt_err0_allimages, cum_err0] = Compute_cum_error(pt_pt_err0_image, n, OutputDir, 'cum error of initialization', 1); 
 	
 	% save results
 	save([OutputDir 'Perturbed_Shape_Param_Initialization_SM.mat'], 'p_mat_gt', 'p_mat_initialization', 'delta_p_initialization', 'pt_pt_err0_allimages', 'pt_pt_err0_image', ...

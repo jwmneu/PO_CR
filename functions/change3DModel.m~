@@ -1,0 +1,6 @@
+function [] = change3DModel()
+	KTorresani = 15; 
+	
+	Reconstruct_Torresani(KTorresani);
+	[KNonrigid] = Create_pdm_wild(K_Torresani, energy)
+end

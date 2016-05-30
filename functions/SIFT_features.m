@@ -1,12 +1,8 @@
 %% extract SIFT features from one image given the image and landmarks
-function [d] = SIFT_features(input_image, lm, SIFT_scale, k, face_size)
-	load shape_model;
-	load myShape;
-	load myAppearance;
-	load fd_stat;
+function [d] = SIFT_features(input_image, lm, SIFT_scale, k, face_size, myShape_s0)
 
 	num_of_pts = size(lm, 1);    
-	lm_s0 = reshape(myShape.s0, [], 2);
+	lm_s0 = reshape(myShape_s0, [], 2);
 	norm_face_size = (max(lm_s0(:,1)) - min(lm_s0(:,1)) + max(lm_s0(:,2)) - min(lm_s0(:,2)))/2;% num of landmarks in the annotations
 
 	if size(input_image, 3) == 3

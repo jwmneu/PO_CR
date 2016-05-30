@@ -1,7 +1,5 @@
 function [] = Setup_createDir(outputDir, debug)
-	cd([pwd '/vlfeat-0.9.20/toolbox']);
-	vl_setup
-	cd '../../'
+% 	vl_setup;
 
 	if(exist(outputDir, 'dir') == 0)
 		mkdir(outputDir);
