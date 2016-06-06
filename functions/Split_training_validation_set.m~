@@ -1,0 +1,122 @@
+function [] = Split_training_validation_set(n, SIFT_scale, Kpi, saveDir)
+	% this function should be run in folder PO_CR_code_v1
+	if nargin == 0
+		n = 2811; 
+		SIFT_scale = 2; 
+		Kpi = 10;
+		saveDir = 'Inputs/';
+	end
+	this_version_check = 'LM_3D_1';
+	plot = 1; 
+	
+	if(exist(saveDir, 'dir') == 0)
+		mkdir(saveDir);
+	end
+	
+	% generate training and validation indexes
+	[indexes_train, indexes_validate, n_train, n_validate] = generate_random_indexes(n, 0.8); 
+	
+	% expand indexes
+	[list_train, list_validate] = expand_indexes(n_train, n_validate, Kpi, indexes_train, indexes_validate); 
+
+	% split ground truth parameters and save
+	gtParamDir = 'TR_params/';
+	split_gt_params(gtParamDir, indexes_train, indexes_validate, saveDir); 
+	
+	% split perturbation initializations and save
+% 	split_perturbation_initialization(InitializationDir, n_train, n_validate, indexes_train, indexes_validate, list_train, list_validate, VERSIONCHECK, Kpi, ...
+% 			SIFT_scale, plot, saveDir, this_version_check); 
+	
+end
+
+%% ################################################     helper functions    ##################################################
+
+
+function [indexes_train, indexes_validate, n_train, n_validate] = generate_random_indexes(n, portion)
+	% generate training and validation indexes
+	rng(1);
+	n_train = round(n * portion); 
+	n_validate = n - n_train; 
+	indexes_train = randperm(n, n_train); 
+	indexes_validate = setdiff([1:n], indexes_train);
+end
+	
+function [list_train, list_validate] = expand_indexes(n_train, n_validate, Kpi, indexes_train, indexes_validate)
+	% expand indexes
+	list_train = zeros(n_train * Kpi, 1); 
+	list_validate = zeros(n_validate * Kpi, 1);
+	for g = 1 : n_train
+		list_train( (g-1) * Kpi + 1 : (g-1) * Kpi + Kpi, 1) = [ (indexes_train(g) -1) * Kpi + 1 : (indexes_train(g) - 1) * Kpi + Kpi];
+	end
+	for g = 1 : n_validate
+		list_validate( (g-1)*Kpi + 1 : (g-1) * Kpi + Kpi, 1) = [ (indexes_validate(g) - 1) * Kpi + 1 : (indexes_validate(g) - 1)*Kpi + Kpi]; 
+	end
+end
+
+function [] = split_gt_params(gtParamDir, indexes_train, indexes_validate, saveDir)	
+	load([gtParamDir 'TR_training.mat']); 
+	TR_images_train = {};
+	TR_images_validate = {};
+	if(exist([gtParamDir 'TR_training_images.mat'], 'file') == 2)
+		load([gtParamDir 'TR_training_images.mat']);
+		TR_images_train = TR_images(indexes_validate)'; 
+		TR_images_validate = TR_images(indexes_validate)';
+	end
+
+	TR_detections_train = TR_detections(indexes_train); 
+	TR_face_size_train = TR_face_size(indexes_train); 
+	TR_gt_landmarks_train = TR_gt_landmarks(indexes_train);
+	TR_myShape_3D_p_train = TR_myShape_3D_p(indexes_train);
+
+	TR_detections_validate = TR_detections(indexes_validate); 
+	TR_face_size_validate = TR_face_size(indexes_validate); 
+	TR_gt_landmarks_validate = TR_gt_landmarks(indexes_validate);
+	TR_myShape_3D_p_validate = TR_myShape_3D_p(indexes_validate);
+
+	% save ground truth parameters
+	save([saveDir 'TR_Training_Params.mat'], 'TR_detections_train', 'TR_face_size_train', 'TR_gt_landmarks_train', ...
+		'TR_myShape_3D_p_train'); 
+	save([saveDir 'TR_Validation_Params.mat'], 'TR_images_validate', 'TR_detections_validate', 'TR_face_size_validate', 'TR_gt_landmarks_validate', ...
+		'TR_myShape_3D_p_validate'); 
+	save([saveDir 'TR_Training_Validation_Params.mat'], 'TR_images_train', 'TR_images_validate', 'TR_detections_train', 'TR_face_size_train', 'TR_gt_landmarks_train', ...
+		'TR_myShape_3D_p_train', 'TR_detections_validate', 'TR_face_size_validate', 'TR_gt_landmarks_validate', 'TR_myShape_3D_p_validate'); 
+end
+
+function [] = split_perturbation_initialization(InitializationDir, n_train, n_validate, indexes_train, indexes_validate, list_train, list_validate, VERSIONCHECK, Kpi, ...
+			SIFT_scale, plot, saveDir, this_version_check)
+	% split initialization perturbation 
+	InitializationDir = ['../PertInit_training_LM_3D_0.35_all_param/'];
+	load([InitializationDir 'Perturbed_SIFT_Feature_labels_LM_3D_S-' num2str(SIFT_scale) '_Kpi-' num2str(Kpi) '.mat']);
+	load([InitializationDir 'Perturbed_SIFT_Features_LM_3D_S-' num2str(SIFT_scale) '_Kpi-' num2str(Kpi) '.mat']);
+	load([InitializationDir 'Perturbed_Shape_Param_Initialization_SM_3D.mat']);
+	if this_version_check ~= VERSIONCHECK
+		disp('the PerturbationInitialization_LM_3D is stale'); return;
+	end
+	
+	delta_p_initialization_train = delta_p_initialization(list_train, :); 
+	p_mat_initialization_train = p_mat_initialization(list_train, :);
+	features_train = features(list_train, :);
+	b_mat_train = b_mat(list_train, :);
+	p_mat_gt_train = p_mat_gt(list_train, :);
+	pt_pt_err0_image_train = pt_pt_err0_image(indexes_train, :);
+	
+	delta_p_initialization_validate = delta_p_initialization(list_validate, :); 
+	p_mat_initialization_validate = p_mat_initialization(list_validate, :);
+	features_validate = features(list_validate, :);
+	b_mat_validate = b_mat(list_validate, :);
+	p_mat_gt_validate = p_mat_gt(list_validate, :);
+	pt_pt_err0_image_validate = pt_pt_err0_image(indexes_validate, :);
+	
+	% compute cum error for train dataset
+	[pt_pt_err0_allimages_train, cum_err0_train] = Compute_cum_error(pt_pt_err0_image_train, n_train, saveDir, 'initial cum_error of training dataset', plot);
+	
+	% compute cum error for validation dataset
+	[pt_pt_err0_allimages_validate, cum_err0_validate] = Compute_cum_error(pt_pt_err0_image_validate, n_validate, saveDir, 'initial cum_error of validation dataset', plot);
+	
+	
+	% save ground truth and perturbed initialization parameters
+	save([saveDir 'TR_PertInit_Training_Validation_Params.mat'], 'delta_p_initialization_train', 'p_mat_initialization_train', 'features_train', 'b_mat_train', ...
+		'p_mat_gt_train',  'pt_pt_err0_image_train', 'delta_p_initialization_validate', 'p_mat_initialization_validate', 'features_validate', 'b_mat_validate', ...
+		'p_mat_gt_validate', 'pt_pt_err0_image_validate', 'n', 'n_train', 'n_validate', 'indexes_train', 'indexes_validate', 'list_train', 'list_validate', 'SIFT_scale', 'Kpi');
+end
+	

@@ -1,4 +1,5 @@
 function [myShape] = SM_shape_model()
+% this function is no longer used after shifting to 3D shape model
 %% initialization
 	modelDir = 'matfiles/';
 	shape = load([modelDir 'shape_model.mat']);

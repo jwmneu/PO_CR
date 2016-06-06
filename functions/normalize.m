@@ -4,4 +4,5 @@ function [normalized_features] = normalize(features)
     minm = min(features, [], 1);
     range = maxm - minm; 
     normalized_features = (features - repmat(minm, r, 1) ) ./ repmat(range, r, 1) ;
+    normalized_features(isnan(normalized_features)) = 0;
 end

@@ -30,11 +30,10 @@ function [TR_images, TR_face_size, TR_gt_landmarks, TR_myShape_3D_p, TR_detectio
 
 	% collect 3D shape parameters
 	gt3DParamDir = 'TR_3D_params/';
-	load([gt3DParamDir 'TR_3D_scale.mat']); 
-	load([gt3DParamDir 'TR_3D_translation.mat']); 
-	load([gt3DParamDir 'TR_3D_rotation.mat']); 
-	load([gt3DParamDir 'TR_3D_rotation_euler.mat']); 
-	load([gt3DParamDir 'TR_3D_nonrigid_params.mat']); 
+	load([gt3DParamDir 'TR_3D_training.mat']); 
+	
+	validation_set = [1700:2000, 611:811]; 
+	
 	TR_myShape_3D_p = cell(nHelen + nLFPW, 1);
 
 	n1 = 2000;
@@ -71,7 +70,7 @@ function [TR_images, TR_face_size, TR_gt_landmarks, TR_myShape_3D_p, TR_detectio
 % 	save([saveDir 'TR_images.mat'], 'TR_images', '-v7.3');
 % 	save([saveDir 'TR_face_size.mat'], 'TR_face_size');
 % 	save([saveDir 'TR_gt_landmarks.mat'], 'TR_gt_landmarks');
-% 	save([saveDir 'TR_myShape_3D_p.mat'], 'TR_myShape_3D_p');
+	save([saveDir 'TR_myShape_3D_p.mat'], 'TR_myShape_3D_p');
 % 	save([saveDir 'TR_detections.mat'], 'TR_detections');
 
 % 	load([saveDir 'TR_detections.mat''); 

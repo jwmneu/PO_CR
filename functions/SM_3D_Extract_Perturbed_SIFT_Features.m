@@ -1,13 +1,14 @@
-function [] = SM_3D_Extract_Perturbed_SIFT_Features(KTorresani, energy, KNonrigid)
+function [] = SM_3D_Extract_Perturbed_SIFT_Features(dataset, KTorresani, energy, KNonrigid )
 	% this function should run in foler PO_CR_code_v1
 	% output : p_mat : size( n * Kpi, K);  delta_p : size(n * Kpi, K);
 	% features : size(n * Kpi, N);  b_mat : size(n * Kpi, N)
-	% chosed shape model of KTorresani = 10, energy = 0.8, KNonrigid = 5
+	% chosed shape model of KTorresani = 25, energy = 0.9, KNonrigid = 13, K = 19
 	
 	global VERSIONCHECK; 
 	VERSIONCHECK = 'SM_3D_1';
 	% default input values
 	if nargin == 0
+		dataset = 'testing';
 		KTorresani = 10; 
 		energy = 0.8;  
 		KNonrigid = 5;
@@ -36,8 +37,13 @@ function [] = SM_3D_Extract_Perturbed_SIFT_Features(KTorresani, energy, KNonrigi
 	KRigid = 6;
 	K = KNonrigid + KRigid;
 	A0P = myAppearance.A0' * P;  
-	n1 = 2000;					
-	n2 = 811;
+	if strcmp(dataset, 'training')
+		n1 = 2000;					
+		n2 = 811;
+	else
+		n1 = 330;
+		n2 = 223; 
+	end
 	n = n1 + n2; 
 	lm_pts = 5;
 	lm_ind1 = [34, 37, 46, 61, 65]; 
@@ -47,16 +53,17 @@ function [] = SM_3D_Extract_Perturbed_SIFT_Features(KTorresani, energy, KNonrigi
 %    	[TR_images, TR_face_size, TR_gt_landmarks, TR_myShape_3D_p, TR_detections] = Collect_training_images_3D(n1, n2) ;
 	
 	gtParamDir = 'TR_params/';
-	if(exist([gtParamDir 'TR_images.mat'], 'file') == 2)
-		load([gtParamDir 'TR_images.mat']);
+	load([gtParamDir 'TR_' dataset '.mat']); 
+	if(exist([gtParamDir 'TR_' dataset '_images.mat'], 'file') == 2)
+		TR_images = load([gtParamDir 'TR_' dataset '_images.mat']);
+		if strcmp(dataset, 'training')
+			TR_images = TR_images.TR_training_images; 
+		else
+			TR_images = TR_images.TR_testing_images; 
+		end
 	end
-	load([gtParamDir 'TR_detections.mat']); 
-	load([gtParamDir 'TR_face_size.mat']);
-	load([gtParamDir 'TR_gt_landmarks.mat']);
+	size(TR_images)
 	
-	gt3DParamDir = ['TR_3D_params/'];
-	load([gt3DParamDir 'TR_myShape_3D_p.mat']);
- 	
 	% initialize learning parameters
 	p_mat_gt = zeros(n * Kpi, K);
 	p_mat_initialization = zeros(n * Kpi, K);
@@ -73,7 +80,7 @@ function [] = SM_3D_Extract_Perturbed_SIFT_Features(KTorresani, energy, KNonrigi
 	
 	noise_scale = 0.35;					% scale the noise level to match the cum_error curve of initialization to that in the paper
 	perturb_param = [2:K];				
-	OutputDir =[ '../PerturbationInitialization_SM_3D_' num2str(noise_scale) '_' mat2str(perturb_param) '/'];
+	OutputDir =[ '../PertInit_' dataset '_SM_3D_' num2str(noise_scale) '_' mat2str(perturb_param) '/'];
 	if(exist(OutputDir, 'dir') == 0)
 		mkdir(OutputDir);
 	end
@@ -129,6 +136,7 @@ function [] = SM_3D_Extract_Perturbed_SIFT_Features(KTorresani, energy, KNonrigi
 			gg
 			face_size = TR_face_size{gg};
 			input_image = TR_images{gg};
+
 			for k = 1 : Kpi
 				lm = getShapeFrom3DParam(myShapeSM3D.M, myShapeSM3D.V, p_mat_initialization((gg-1) * Kpi + k, :));
 				Sfeat = SIFT_features(input_image, lm, SIFT_scale, k, face_size, myShapeSM3D.M_2D);

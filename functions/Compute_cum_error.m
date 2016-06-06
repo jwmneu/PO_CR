@@ -31,6 +31,8 @@ function [pt_pt_err_allimages, cum_err1] = Compute_cum_error(pt_pt_err_image, n,
 		ylim([0, 1]);
 		title([titlename, ' in big range']);
 		grid;
-		savefig(strcat(outputDir, 'cum_error'));
+		m = ceil(rand() * 100);
+		titlename = strrep(titlename,' ','_'); 
+		savefig(strcat(outputDir, titlename));
 	end
 end

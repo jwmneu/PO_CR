@@ -1,5 +1,5 @@
 %% extract SIFT features from one image given the image and landmarks
-function [d] = SIFT_features(input_image, lm, SIFT_scale, k, face_size, myShape_s0, makeplot, plotDir, gg)
+function [d] = my_SIFT_features(input_image, lm, SIFT_scale, face_size, myShape_s0, makeplot, plotDir, gg)
 
 	num_of_pts = size(lm, 1);    
 	lm_s0 = reshape(myShape_s0, [], 2);
@@ -18,6 +18,6 @@ function [d] = SIFT_features(input_image, lm, SIFT_scale, k, face_size, myShape_
 		figure;imagesc(input_image); colormap(gray); hold on; plot(lm(:,1), lm(:,2), 'o');     
 		h = vl_plotsiftdescriptor(d(:, 1:5), f(:, 1:5)) ;
 		set(h,'color','g', 'linewidth', 0.5);
-		savefig([plotDir 'sift_extract_features_' gg]);
+		savefig([plotDir 'sift_extract_features_' num2str(gg)]);
 	end
 end
